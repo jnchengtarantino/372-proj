@@ -1,0 +1,80 @@
+%Setup G(s)
+Gs = tf(1,[400 0 0]);
+
+%Setup K1(s),K2(s),K3(s)
+K1 = tf([0.1 0.01], [1 0]);
+K2 = tf([240 3], [80 20]);
+K3 = tf([1400 35],[40 80]);
+
+%Setup time vectors for necessary simulations
+t1 = 0:0.5:500; % for input response
+t2 = 0:150:172800;% for disturbance input
+
+%Setup disturbance input
+d = (1E-4)*cos((7.28E-5)*t2);
+
+%Setup input Step
+opt = stepDataOptions('StepAmplitude',5*pi/180);
+refPlusDelta = 1.02*5 + 0*t1; %Degrees
+refMinusDelta =0.98*5 + 0*t1; %Degrees
+refMaxOvershoot =1.25*5 + 0 *t1; %Degrees
+distMax = 0.05 + 0*t2; %degrees
+
+%{
+System views (All feedback is negative)
+
+R --> K --> G --> Theta
+   ^           |
+   |-----------|
+
+
+R ----> K ----> Tc
+    ^       |
+    |-- G <-|
+
+
+D ----> G ----> Theta
+    ^       |
+    |-- K <-|
+
+
+D --> G --> K --> Tc
+   ^           |
+   |-----------|
+%}
+
+%Prepare Systems for K1
+sysfoK1 = series(K1,Gs);
+inOutK1 = feedback(sysfoK1,1);
+inCtrlK1 = feedback(K1,Gs);
+distOutK1 = feedback(Gs,K1);
+distCtrlK1 = feedback(sysfoK1,1);
+
+%Prepare outputs for K1
+ThetaStepRespK1 = step(inOutK1,t1,opt) * 180/pi;
+TcStepRespK1 = step(inCtrlK1,t1,opt);
+ThetaDistRespK1 = lsim(distOutK1, d, t2) * 180/pi;
+TcDistRespK1 = lsim(distCtrlK1, d, t2);
+
+figure;
+plot(t1, ThetaStepRespK1, t1, refPlusDelta, '--', t1, refMinusDelta,'--', t1, refMaxOvershoot, '--')
+title('Output Angle Response to 5 degree step System K1');
+xlabel('time (seconds)');
+ylabel('Theta (degrees)');
+
+figure;
+plot(t1,TcStepRespK1);
+title('Control Torque response to 5 degree step System K1');
+xlabel('time (seconds)');
+ylabel('Tc (N*m)');
+
+figure;
+plot(t2,ThetaDistRespK1,t2,distMax,'--');
+title('Output Angle Response to Disturbance System K1');
+xlabel('time (seconds)');
+ylabel('Theta (degrees');
+
+figure;
+plot(t2, TcDistResponseK1);
+title('Control Torque Response to Disturbance System K1');
+xlabal(
